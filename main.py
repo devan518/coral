@@ -113,8 +113,9 @@ class Main():
         gitCheck = subprocess.run("git --version", shell=True, capture_output=True, text=True).stdout
         if "git version" not in gitCheck:
             subprocess.run("scoop install git", shell=True)
-            subprocess.run("git clone https://github.com/crabby-lang/crabby.git", shell=True)
-            subprocess.run("cargo build", shell=True)
+        
+        subprocess.run("git clone https://github.com/crabby-lang/crabby.git", shell=True)
+        subprocess.run("cargo build", shell=True)
         
     def __init__(self):
         self.keywords = [
@@ -282,6 +283,7 @@ class Main():
         mainLayout.addLayout(Hlayout)
 
         # === FILE EXPLORER ===
+        self.openFolder()
         self.model = QFileSystemModel()
         self.model.setRootPath(str(self.currentDir))
 
