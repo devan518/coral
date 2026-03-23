@@ -29,6 +29,8 @@ from subprocess import CREATE_NEW_CONSOLE
 import subprocess
 import os
 
+# TODO: ADD INTELLISENSE
+
 class Highlighter(QSyntaxHighlighter):
     """
     Provides syntax highlighting for the editor.
@@ -239,7 +241,7 @@ class Main():
 
         # main window + layout
         window = QWidget()
-        window.setWindowTitle("Crabby IDE")
+        window.setWindowTitle("Coral")
         mainLayout = QVBoxLayout(window)
 
         # === TOPBAR ===
