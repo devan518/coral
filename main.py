@@ -124,7 +124,7 @@ class Main():
             "let", "const", "var"
         ]
         self.runningCode = False 
-        self.currentDir = Path.cwd() # Default to current working directory
+        self.currentDir =  None # Default to current working directory
         self.currentFile = None
         self.downloadBinaries()
 
