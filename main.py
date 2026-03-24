@@ -11,7 +11,8 @@ from PySide6.QtWidgets import (
     QFileSystemModel,
     QMessageBox,
     QInputDialog,
-    QFileDialog
+    QFileDialog,
+    QCompleter,
 )
 
 import pathlib
@@ -22,15 +23,24 @@ from PySide6.QtGui import (
     QColor, 
     QFont,
     QAction,
+    QTextCursor,
+    QKeyEvent
 )
-from PySide6.QtCore import QRegularExpression, QDir
+from PySide6.QtCore import QRegularExpression, QDir, Qt, QStringListModel
 import sys
 from subprocess import CREATE_NEW_CONSOLE
 import subprocess
 import os
 
-# TODO: ADD INTELLISENSE
-
+# TODO: 
+# check the bottom of the highlighter class for deets
+# add icons for files (i made one in /icons for .crab files)
+# perhaps a mini launcher?
+# undo/redo
+# search, replace, find
+# essentially finish off the highlighting and code hints by creating a semi crabby
+# right click menus for each widget
+#
 class Highlighter(QSyntaxHighlighter):
     """
     Provides syntax highlighting for the editor.
@@ -94,14 +104,96 @@ class Highlighter(QSyntaxHighlighter):
                 if index != -1:
                     self.setFormat(index, len(word), self.keyword_format)
             pos += len(word) + 1
+        
+        # === symbols ( e.g ({;:] )  ===
+        # === errors (the red tilde under the line ) ===
 
+class CodeHinter(QCompleter):
+    def __init__(self, editor, keywords):
+        super().__init__(keywords)
+
+        self.editor = editor
+        self.keywords = keywords
+
+        self.setWidget(editor) #enable editor for code hints
+
+        # no clue what this means cuz i copy and pasted from the docs but we are going with the flow 😎
+        try:
+            self.setCaseSensitivity(Qt.CaseInsensitive)
+        except:
+            pass
+        
+        # enable the popup thing 
+        try:
+            self.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        except:
+            pass
+        # insert text when clicked
+        self.activated.connect(self.insertCompletion)
+        # update suggestions while typing
+        self.editor.textChanged.connect(self.showCompletion)
+
+    # going with the flow ✌️
+    def getCurrentWord(self):
+        cursor = self.editor.textCursor()
+        text = self.editor.toPlainText()
+        pos = cursor.position()
+
+        start = pos
+        while start > 0 and (text[start - 1].isalnum() or text[start - 1] == "_"):
+            start -= 1
+
+        end = pos
+        while end < len(text) and (text[end].isalnum() or text[end] == "_"):
+            end += 1
+
+        
+        return text[start:end], start, end
+    
+    # going with the flow ✌️
+    def showCompletion(self):
+        word, start, end = self.getCurrentWord()
+
+        if not word:
+            self.popup().hide()
+            return
+
+        matches = [k for k in self.keywords if word.lower() in k.lower()]
+        if not matches:
+            self.popup().hide()
+            return
+
+        self.model().setStringList(matches)
+
+        rect = self.editor.cursorRect()
+        rect.setWidth(
+            self.popup().sizeHintForColumn(0)
+            + self.popup().verticalScrollBar().sizeHint().width()
+        )
+        self.complete(rect)
+
+    # yes.
+    def insertCompletion(self, completion):
+        word, start, end = self.getCurrentWord()
+
+        cursor = self.editor.textCursor()
+        cursor.setPosition(start)
+        cursor.setPosition(end, QTextCursor.KeepAnchor)
+        cursor.removeSelectedText()
+        cursor.insertText(completion)
+        self.editor.setTextCursor(cursor)
 
 class Main():
+    def repairBinaries():
+        ...
+    
     def downloadBinaries(self):
         """
         Checks for and installs required dependencies (Scoop, Rust, Git, Crabby).
         This ensures the user's environment is ready for compiling Crabby code.
         """
+        ...
+        '''
         scoopCheck = subprocess.run("scoop --version", shell=True, capture_output=True, text=True).stdout
         if "Scoop" not in scoopCheck:
             subprocess.run("irm get.scoop.sh | iex", shell=True)
@@ -114,8 +206,13 @@ class Main():
         if "git version" not in gitCheck:
             subprocess.run("scoop install git", shell=True)
         
-        subprocess.run("git clone https://github.com/crabby-lang/crabby.git", shell=True)
+        if not os.path.exists("crabby"):
+            subprocess.run("git clone https://github.com/crabby-lang/crabby.git", shell=True)
+            
+        os.chdir("crabby")
+        print(os.getcwd())
         subprocess.run("cargo build", shell=True)
+        '''
         
     def __init__(self):
         self.keywords = [
@@ -302,7 +399,7 @@ class Main():
         self.editor.setFont(QFont("Consolas", 12))
 
         self.highlighter = Highlighter(self.editor.document(), self.keywords)
-
+        self.codehinter = CodeHinter(self.editor, self.keywords)
         # === ADD TO LAYOUT ===
         Hlayout.addWidget(self.tree, 1)
         Hlayout.addWidget(self.editor, 3)
