@@ -38,7 +38,7 @@ import os
 # perhaps a mini launcher?
 # undo/redo
 # search, replace, find
-# essentially finish off the highlighting and code hints by creating a semi crabby
+# essentially finish off the highlighting and code hints by creating a semi crabby interpreter
 # right click menus for each widget
 #
 class Highlighter(QSyntaxHighlighter):
@@ -59,7 +59,7 @@ class Highlighter(QSyntaxHighlighter):
 
         # Define styles
         self.keyword_format = QTextCharFormat()
-        self.keyword_format.setForeground(QColor("#569CD6"))
+        self.keyword_format.setForeground(QColor("#C695E8")) # or #569CD6
         self.keyword_format.setFontWeight(QFont.Bold)
 
         self.string_format = QTextCharFormat()
@@ -68,6 +68,14 @@ class Highlighter(QSyntaxHighlighter):
         self.comment_format = QTextCharFormat()
         self.comment_format.setForeground(QColor("#9E9E9E"))
 
+        self.bracket_format = QTextCharFormat()
+        self.bracket_format.setForeground(QColor("#FFD326"))
+
+        self.error_format = QTextCharFormat()
+        self.error_format.setForeground(QColor("#D1071B"))
+
+        self.variable_format = QTextCharFormat()
+        self.variable_format.setForeground(QColor("#9CDEFD"))
     def highlightBlock(self, text):
         """
         Applies formatting to a block of text (usually a line).
@@ -76,7 +84,7 @@ class Highlighter(QSyntaxHighlighter):
         text: The raw string of the current block.
         """
         # === comments ===
-        index = text.find("#")
+        index = text.find("//")
         if index != -1:
             self.setFormat(index, len(text) - index, self.comment_format)
             text = text[:index]  # Ignore comment part for further parsing
@@ -85,7 +93,7 @@ class Highlighter(QSyntaxHighlighter):
         in_string = False
         start = 0
         for i, char in enumerate(text):
-            if char in ['"', "'"]:
+            if char in ['"', '"""']:
                 if not in_string:
                     start = i
                     in_string = True
@@ -105,7 +113,10 @@ class Highlighter(QSyntaxHighlighter):
                     self.setFormat(index, len(word), self.keyword_format)
             pos += len(word) + 1
         
-        # === symbols ( e.g ({;:] )  ===
+        # === brackets ===
+
+        # === variables ===
+        
         # === errors (the red tilde under the line ) ===
 
 class CodeHinter(QCompleter):
@@ -330,6 +341,10 @@ class Main():
         if ok and text:
             return text
         return None
+
+    def initUI():
+        """planning on having a seperate function to initialize all of the ui"""
+        ...
 
     def main(self):
         """
