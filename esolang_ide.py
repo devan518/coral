@@ -3,6 +3,8 @@ import os
 import pathlib
 import subprocess
 from pathlib import Path
+from subprocess import CREATE_NEW_CONSOLE
+
 from PySide6.QtWidgets import (
     QApplication,
     QPlainTextEdit,
@@ -17,6 +19,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QCompleter,
 )
+
 from PySide6.QtGui import (
     QSyntaxHighlighter,
     QTextCharFormat,
@@ -24,9 +27,11 @@ from PySide6.QtGui import (
     QFont,
     QAction,
     QTextCursor,
+    QDesktopServices
 )
-from PySide6.QtCore import Qt, QStringListModel
-from subprocess import CREATE_NEW_CONSOLE
+
+from PySide6.QtCore import Qt, QStringListModel, QUrl
+
 
 class Highlighter(QSyntaxHighlighter):
     def __init__(self, document, keywords):
@@ -34,32 +39,34 @@ class Highlighter(QSyntaxHighlighter):
 
         self.keywords = set(keywords)
 
+        # Lesbian flag inspired syntax palette
         self.keyword_format = QTextCharFormat()
-        self.keyword_format.setForeground(QColor("#FF1493"))
+        self.keyword_format.setForeground(QColor("#D162A4"))
         self.keyword_format.setFontWeight(QFont.Bold)
 
         self.string_format = QTextCharFormat()
-        self.string_format.setForeground(QColor("#FFB6C1"))
+        self.string_format.setForeground(QColor("#FF9A56"))
 
         self.comment_format = QTextCharFormat()
-        self.comment_format.setForeground(QColor("#808080"))
+        self.comment_format.setForeground(QColor("#B55690"))
 
         self.bracket_format = QTextCharFormat()
-        self.bracket_format.setForeground(QColor("#FFA500"))
+        self.bracket_format.setForeground(QColor("#EF7627"))
 
         self.error_format = QTextCharFormat()
-        self.error_format.setForeground(QColor("#FF0000"))
+        self.error_format.setForeground(QColor("#D52D00"))
 
         self.variable_format = QTextCharFormat()
-        self.variable_format.setForeground(QColor("#87CEEB"))
+        self.variable_format.setForeground(QColor("#FFD3E6"))
 
         self.function_format = QTextCharFormat()
-        self.function_format.setForeground(QColor("#DDA0DD"))
+        self.function_format.setForeground(QColor("#EF7627"))
         self.function_format.setFontWeight(QFont.Bold)
 
     def highlightBlock(self, text):
         # Comments
         index = text.find("//")
+
         if index != -1:
             self.setFormat(index, len(text) - index, self.comment_format)
             text = text[:index]
@@ -77,7 +84,7 @@ class Highlighter(QSyntaxHighlighter):
                     self.setFormat(start, i - start + 1, self.string_format)
                     in_string = False
 
-        # Keywords and functions
+        # Keywords
         words = text.split()
         pos = 0
 
@@ -86,6 +93,7 @@ class Highlighter(QSyntaxHighlighter):
 
             if clean in self.keywords:
                 index = text.find(word, pos)
+
                 if index != -1:
                     self.setFormat(index, len(word), self.keyword_format)
 
@@ -113,12 +121,15 @@ class CodeHinter(QCompleter):
         text = self.editor.toPlainText()
         pos = cursor.position()
 
+        def is_word_char(char):
+            return char.isalnum() or char == "_" or char == "@"
+
         start = pos
-        while start > 0 and (text[start - 1].isalnum() or text[start - 1] == "_"):
+        while start > 0 and is_word_char(text[start - 1]):
             start -= 1
 
         end = pos
-        while end < len(text) and (text[end].isalnum() or text[end] == "_"):
+        while end < len(text) and is_word_char(text[end]):
             end += 1
 
         return text[start:end], start, end
@@ -162,7 +173,22 @@ class Main(QWidget):
     def __init__(self, startup_path):
         super().__init__()
 
-        self.keywords = ["@wlw","@bond","@awakening","@confess","@ship","@promise","@jealous","@forgive","@fate","@cling","@sappho","@rebond","plus","minus"]
+        self.keywords = [
+            "@wlw",
+            "@bond",
+            "@awakening",
+            "@confess",
+            "@ship",
+            "@promise",
+            "@jealous",
+            "@forgive",
+            "@fate",
+            "@cling",
+            "@sappho",
+            "@rebond",
+            "plus",
+            "minus",
+        ]
 
         self.runningCode = False
         self.currentDir = None
@@ -191,7 +217,6 @@ class Main(QWidget):
 
         self.saveFile()
 
-        # Yurilang interpreter command (adjust if needed)
         command = f'cd /d "{self.currentDir}" && yurilang "{self.currentFile}"'
 
         subprocess.Popen(
@@ -308,12 +333,22 @@ class Main(QWidget):
 
         # === TOPBAR ===
         topbar = QMenuBar()
+        topbar.setObjectName("topbar")
         mainLayout.addWidget(topbar)
 
         # === MENUS ===
         file_menu = topbar.addMenu("File")
         run_menu = topbar.addMenu("Run")
+        doc_menu = topbar.addMenu("Docs")
 
+        doc_action = QAction("Documentation", self)
+        doc_action.triggered.connect(
+            lambda: QDesktopServices.openUrl(
+                QUrl("https://kazooki123.github.io/yurilang-docs/")
+            )
+        )
+
+        doc_menu.addAction(doc_action)  
         # === RUN MENU ACTIONS ===
         run_action = QAction("Run Code", self)
         run_action.triggered.connect(self.runCode)
@@ -354,6 +389,7 @@ class Main(QWidget):
         self.model.setRootPath(str(self.currentDir))
 
         self.tree = QTreeView()
+        self.tree.setObjectName("fileTree")
         self.tree.setModel(self.model)
         self.tree.setRootIndex(self.model.index(str(self.currentDir)))
         self.tree.clicked.connect(self.openFile)
@@ -363,11 +399,24 @@ class Main(QWidget):
 
         # === EDITOR ===
         self.editor = QPlainTextEdit()
-        self.editor.setStyleSheet("background:#1e1e1e; color:white;")
+        self.editor.setObjectName("editor")
         self.editor.setFont(QFont("Consolas", 12))
 
         self.highlighter = Highlighter(self.editor.document(), self.keywords)
         self.codehinter = CodeHinter(self.editor, self.keywords)
+
+        self.codehinter.popup().setStyleSheet("""
+            QListView {
+                background-color: #3A102B;
+                color: #FFF4FA;
+                border: 1px solid #D162A4;
+                selection-background-color: #A30262;
+                selection-color: white;
+                padding: 4px;
+                font-family: Consolas;
+                font-size: 13px;
+            }
+        """)
 
         # === OPEN FILE IF STARTUP PATH WAS A FILE ===
         if self.currentFile is not None:
@@ -387,11 +436,185 @@ class Main(QWidget):
         Hlayout.addWidget(self.tree, 1)
         Hlayout.addWidget(self.editor, 3)
 
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #240B1B;
+                color: #FFF4FA;
+                font-family: Segoe UI;
+                font-size: 13px;
+            }
+
+            QMenuBar#topbar {
+                background-color: #3A102B;
+                color: #FFF4FA;
+                border-bottom: 2px solid #A30262;
+                padding: 3px;
+            }
+
+            QMenuBar#topbar::item {
+                background: transparent;
+                color: #FFF4FA;
+                padding: 6px 12px;
+                border-radius: 5px;
+            }
+
+            QMenuBar#topbar::item:selected {
+                background-color: #A30262;
+                color: white;
+            }
+
+            QMenu {
+                background-color: #3A102B;
+                color: #FFF4FA;
+                border: 1px solid #D162A4;
+                padding: 5px;
+            }
+
+            QMenu::item {
+                padding: 7px 26px 7px 20px;
+                border-radius: 4px;
+            }
+
+            QMenu::item:selected {
+                background-color: #A30262;
+                color: white;
+            }
+
+            QMenu::separator {
+                height: 1px;
+                background-color: #B55690;
+                margin: 5px 8px;
+            }
+
+            QTreeView#fileTree {
+                background-color: #2D0C22;
+                color: #FFF4FA;
+                border: none;
+                border-right: 2px solid #A30262;
+                alternate-background-color: #3A102B;
+                selection-background-color: #D162A4;
+                selection-color: white;
+                outline: none;
+                padding: 6px;
+            }
+
+            QTreeView#fileTree::item {
+                padding: 5px;
+                border-radius: 5px;
+            }
+
+            QTreeView#fileTree::item:hover {
+                background-color: #54213F;
+            }
+
+            QTreeView#fileTree::item:selected {
+                background-color: #A30262;
+                color: white;
+            }
+
+            QHeaderView::section {
+                background-color: #3A102B;
+                color: #FFF4FA;
+                border: none;
+                border-bottom: 1px solid #B55690;
+                padding: 5px;
+            }
+
+            QPlainTextEdit#editor {
+                background-color: #180711;
+                color: #FFF4FA;
+                border: none;
+                selection-background-color: #D162A4;
+                selection-color: white;
+                padding: 12px;
+            }
+
+            QScrollBar:vertical {
+                background-color: #240B1B;
+                width: 12px;
+                margin: 0px;
+            }
+
+            QScrollBar::handle:vertical {
+                background-color: #B55690;
+                border-radius: 6px;
+                min-height: 25px;
+            }
+
+            QScrollBar::handle:vertical:hover {
+                background-color: #D162A4;
+            }
+
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+
+            QScrollBar:horizontal {
+                background-color: #240B1B;
+                height: 12px;
+                margin: 0px;
+            }
+
+            QScrollBar::handle:horizontal {
+                background-color: #B55690;
+                border-radius: 6px;
+                min-width: 25px;
+            }
+
+            QScrollBar::handle:horizontal:hover {
+                background-color: #D162A4;
+            }
+
+            QScrollBar::add-line:horizontal,
+            QScrollBar::sub-line:horizontal {
+                width: 0px;
+            }
+
+            QMessageBox {
+                background-color: #240B1B;
+                color: #FFF4FA;
+            }
+
+            QInputDialog {
+                background-color: #240B1B;
+                color: #FFF4FA;
+            }
+
+            QLineEdit {
+                background-color: #180711;
+                color: #FFF4FA;
+                border: 1px solid #D162A4;
+                border-radius: 6px;
+                padding: 7px;
+                selection-background-color: #A30262;
+            }
+
+            QPushButton {
+                background-color: #A30262;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 7px 12px;
+                font-weight: bold;
+            }
+
+            QPushButton:hover {
+                background-color: #D162A4;
+            }
+
+            QPushButton:pressed {
+                background-color: #EF7627;
+            }
+        """)
+
         self.resize(900, 600)
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+
     ide = Main(Path.cwd())
     ide.show()
+
     sys.exit(app.exec())
