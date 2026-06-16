@@ -115,13 +115,267 @@ class IDELauncher(QMainWindow):
             QMessageBox.critical(self, "Error", f"Could not open project:\n{e}")
 
     def open_project(self):
-        folder = QFileDialog.getExistingDirectory(
-            self,
-            "Open Project Folder"
-        )
+        self.open_project_window = QWidget()
+        self.open_project_window.setWindowTitle("Open Project")
+        self.open_project_window.resize(620, 360)
 
-        if folder:
-            self.launch_ide(folder)
+        layout = QVBoxLayout(self.open_project_window)
+        layout.setContentsMargins(28, 26, 28, 26)
+        layout.setSpacing(14)
+
+        title = QLabel("Open Project")
+        title.setObjectName("title")
+
+        subtitle = QLabel("Choose which IDE to open this project with.")
+        subtitle.setObjectName("subtitle")
+
+        # ================= IDE TYPE =================
+
+        ide_type_label = QLabel("IDE Type")
+        ide_type_label.setObjectName("pathLabel")
+
+        ide_type_row = QHBoxLayout()
+        ide_type_row.setSpacing(10)
+
+        crabby_btn = QPushButton("Crabby")
+        yurilang_btn = QPushButton("Yurilang")
+
+        crabby_btn.setFixedHeight(36)
+        yurilang_btn.setFixedHeight(36)
+
+        selected_type = {"type": "crabby"}
+
+        def set_type_button_styles():
+            if selected_type["type"] == "crabby":
+                crabby_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #D52D00;
+                        color: white;
+                        border: none;
+                        border-radius: 7px;
+                        padding: 8px 12px;
+                        font-weight: bold;
+                        text-align: center;
+                    }
+
+                    QPushButton:hover {
+                        background-color: #EF7627;
+                    }
+                """)
+
+                yurilang_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #333333;
+                        color: white;
+                        border: 1px solid #444444;
+                        border-radius: 7px;
+                        padding: 8px 12px;
+                        text-align: center;
+                    }
+
+                    QPushButton:hover {
+                        background-color: #3f3f46;
+                    }
+                """)
+
+            else:
+                yurilang_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #D162A4;
+                        color: white;
+                        border: none;
+                        border-radius: 7px;
+                        padding: 8px 12px;
+                        font-weight: bold;
+                        text-align: center;
+                    }
+
+                    QPushButton:hover {
+                        background-color: #FF1493;
+                    }
+                """)
+
+                crabby_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #333333;
+                        color: white;
+                        border: 1px solid #444444;
+                        border-radius: 7px;
+                        padding: 8px 12px;
+                        text-align: center;
+                    }
+
+                    QPushButton:hover {
+                        background-color: #3f3f46;
+                    }
+                """)
+
+        def select_crabby():
+            selected_type["type"] = "crabby"
+            set_type_button_styles()
+
+        def select_yurilang():
+            selected_type["type"] = "esolang"
+            set_type_button_styles()
+
+        crabby_btn.clicked.connect(select_crabby)
+        yurilang_btn.clicked.connect(select_yurilang)
+
+        ide_type_row.addWidget(crabby_btn)
+        ide_type_row.addWidget(yurilang_btn)
+
+        select_crabby()
+
+        # ================= PROJECT PATH =================
+
+        path_label = QLabel("Project Folder")
+        path_label.setObjectName("pathLabel")
+
+        path_row = QHBoxLayout()
+        path_row.setSpacing(10)
+
+        path_input = QLineEdit()
+        path_input.setPlaceholderText("Type or select the project folder...")
+
+        browse_btn = QPushButton("Browse")
+        browse_btn.setFixedWidth(100)
+
+        path_row.addWidget(path_input)
+        path_row.addWidget(browse_btn)
+
+        def select_path():
+            folder = QFileDialog.getExistingDirectory(
+                self.open_project_window,
+                "Open Project Folder"
+            )
+
+            if folder:
+                path_input.setText(folder.replace("\\", "/"))
+
+        browse_btn.clicked.connect(select_path)
+
+        # ================= OPEN PROJECT =================
+
+        def open_selected_project():
+            project_path_text = path_input.text().strip()
+
+            if not project_path_text:
+                QMessageBox.warning(
+                    self.open_project_window,
+                    "Missing Project Folder",
+                    "Please enter or select a project folder."
+                )
+                return
+
+            project_path = Path(project_path_text).expanduser()
+
+            if not project_path.exists():
+                QMessageBox.warning(
+                    self.open_project_window,
+                    "Folder Not Found",
+                    "That project folder does not exist."
+                )
+                return
+
+            if not project_path.is_dir():
+                QMessageBox.warning(
+                    self.open_project_window,
+                    "Invalid Project Folder",
+                    "The selected path is not a folder."
+                )
+                return
+
+            self.launch_ide(str(project_path), selected_type["type"])
+            self.open_project_window.close()
+
+        open_btn = QPushButton("Open Project")
+        open_btn.setObjectName("primaryButton")
+        open_btn.setFixedHeight(40)
+        open_btn.clicked.connect(open_selected_project)
+
+        # ================= ADD WIDGETS =================
+
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        layout.addSpacing(10)
+
+        layout.addWidget(ide_type_label)
+        layout.addLayout(ide_type_row)
+
+        layout.addSpacing(10)
+
+        layout.addWidget(path_label)
+        layout.addLayout(path_row)
+
+        layout.addStretch()
+        layout.addWidget(open_btn)
+
+        self.open_project_window.setStyleSheet("""
+            QWidget {
+                background-color: #1e1e1e;
+                color: white;
+                font-family: Segoe UI;
+                font-size: 14px;
+            }
+
+            QLabel#title {
+                font-size: 22px;
+                font-weight: bold;
+            }
+
+            QLabel#subtitle {
+                color: #a0a0a0;
+                font-size: 13px;
+            }
+
+            QLabel#pathLabel {
+                color: #d4d4d4;
+                font-weight: bold;
+            }
+
+            QLineEdit {
+                background-color: #2d2d30;
+                color: white;
+                border: 1px solid #3f3f46;
+                border-radius: 7px;
+                padding: 8px 10px;
+                selection-background-color: #007acc;
+            }
+
+            QLineEdit:focus {
+                border: 1px solid #007acc;
+            }
+
+            QPushButton {
+                background-color: #333333;
+                color: white;
+                border: 1px solid #444444;
+                border-radius: 7px;
+                padding: 8px 12px;
+                text-align: center;
+            }
+
+            QPushButton:hover {
+                background-color: #3f3f46;
+            }
+
+            QPushButton:pressed {
+                background-color: #007acc;
+            }
+
+            QPushButton#primaryButton {
+                background-color: #007acc;
+                border: none;
+                font-weight: bold;
+            }
+
+            QPushButton#primaryButton:hover {
+                background-color: #1688d9;
+            }
+        """)
+
+        self.open_project_path_input = path_input
+        self.open_project_window.show()
 
     def new_project(self):
         self.new_project_window = QWidget()
