@@ -263,7 +263,7 @@ class Main(QWidget):
         Hlayout.addWidget(self.tree, 1)
         Hlayout.addWidget(self.editor, 3)
 
-        self.resize(900, 600)
+        self.showMaximized()
 
 
 if __name__ == "__main__":

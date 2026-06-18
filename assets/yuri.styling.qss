@@ -1,0 +1,169 @@
+QWidget {
+    background-color: #240B1B;
+    color: #FFF4FA;
+    font-family: Segoe UI;
+    font-size: 13px;
+}
+
+QMenuBar#topbar {
+    background-color: #3A102B;
+    color: #FFF4FA;
+    border-bottom: 2px solid #A30262;
+    padding: 3px;
+}
+
+QMenuBar#topbar::item {
+    background: transparent;
+    color: #FFF4FA;
+    padding: 6px 12px;
+    border-radius: 5px;
+}
+
+QMenuBar#topbar::item:selected {
+    background-color: #A30262;
+    color: white;
+}
+
+QMenu {
+    background-color: #3A102B;
+    color: #FFF4FA;
+    border: 1px solid #D162A4;
+    padding: 5px;
+}
+
+QMenu::item {
+    padding: 7px 26px 7px 20px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background-color: #A30262;
+    color: white;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #B55690;
+    margin: 5px 8px;
+}
+
+QTreeView#fileTree {
+    background-color: #2D0C22;
+    color: #FFF4FA;
+    border: none;
+    border-right: 2px solid #A30262;
+    alternate-background-color: #3A102B;
+    selection-background-color: #D162A4;
+    selection-color: white;
+    outline: none;
+    padding: 6px;
+}
+
+QTreeView#fileTree::item {
+    padding: 5px;
+    border-radius: 5px;
+}
+
+QTreeView#fileTree::item:hover {
+    background-color: #54213F;
+}
+
+QTreeView#fileTree::item:selected {
+    background-color: #A30262;
+    color: white;
+}
+
+QHeaderView::section {
+    background-color: #3A102B;
+    color: #FFF4FA;
+    border: none;
+    border-bottom: 1px solid #B55690;
+    padding: 5px;
+}
+
+QPlainTextEdit#editor {
+    background-color: #180711;
+    color: #FFF4FA;
+    border: none;
+    selection-background-color: #D162A4;
+    selection-color: white;
+    padding: 12px;
+}
+
+QScrollBar:vertical {
+    background-color: #240B1B;
+    width: 12px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #B55690;
+    border-radius: 6px;
+    min-height: 25px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #D162A4;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar:horizontal {
+    background-color: #240B1B;
+    height: 12px;
+    margin: 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #B55690;
+    border-radius: 6px;
+    min-width: 25px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #D162A4;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+QMessageBox {
+    background-color: #240B1B;
+    color: #FFF4FA;
+}
+
+QInputDialog {
+    background-color: #240B1B;
+    color: #FFF4FA;
+}
+
+QLineEdit {
+    background-color: #180711;
+    color: #FFF4FA;
+    border: 1px solid #D162A4;
+    border-radius: 6px;
+    padding: 7px;
+    selection-background-color: #A30262;
+}
+
+QPushButton {
+    background-color: #A30262;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #D162A4;
+}
+
+QPushButton:pressed {
+    background-color: #EF7627;
+}

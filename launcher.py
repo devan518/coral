@@ -67,39 +67,8 @@ class IDELauncher(QMainWindow):
         main_layout.addWidget(content)
 
         self.setCentralWidget(main_widget)
-
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #1e1e1e;
-            }
-
-            #sidebar {
-                background-color: #252526;
-                border-right: 1px solid #333333;
-            }
-
-            #content {
-                background-color: #1e1e1e;
-            }
-
-            QPushButton {
-                background-color: #333333;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-size: 14px;
-                text-align: left;
-                padding-left: 14px;
-            }
-
-            QPushButton:hover {
-                background-color: #3f3f46;
-            }
-
-            QPushButton:pressed {
-                background-color: #007acc;
-            }
-        """)
+        qss_path = Path(__file__).parent / "assets" / "launcher.styling.qss"
+        self.setStyleSheet(qss_path.read_text())
 
     def launch_ide(self, path, ide_type="crabby"):
         try:
