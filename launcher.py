@@ -17,8 +17,8 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtCore import Qt
 
-from crabby_ide import Main as CrabbyMain
-from esolang_ide import Main as EsolangMain
+from crabby import Main as CrabbyMain
+from yuri import Main as EsolangMain
 
 
 class IDELauncher(QMainWindow):

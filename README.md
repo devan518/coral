@@ -1,9 +1,14 @@
-# coral - a lightweight code editor for the language crabby!
-still in beta
+# Coral 🪸
 
+A lightweight **Code Editor** for the language [Crabby](https://codeberg.org/crabby-lang/crabby) and [Yurilang](https://codeberg.org/Kazooki123/yurilang)
 
-https://github.com/user-attachments/assets/84e35063-d10c-43af-88bf-d74dd7f23f20
+> [!IMPORTANT]
+> Project is still in beta, meaning rapid changes and updates occur or slows down.
 
+## Setup
 
+## Contribution
 
+## License
 
+Under the **MIT** License.
