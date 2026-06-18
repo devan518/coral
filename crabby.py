@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QFileDialog,
     QCompleter,
+    QMenu,
 )
 from PySide6.QtGui import (
     QSyntaxHighlighter,
@@ -27,7 +28,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtCore import Qt, QStringListModel
 from subprocess import CREATE_NEW_CONSOLE
-
+import shutil
 from src.core import CrabHighlighter, CrabCodeHinter
 
 
@@ -152,6 +153,52 @@ class Main(QWidget):
             self.editor.clear()
             self.setWindowTitle(f"Coral - {self.currentDir.name}")
 
+    def deleteFile(self):
+        if self.currentFile is None or self.currentDir is None:
+            QMessageBox.warning(self, "Error", "No file selected to delete")
+            return
+
+        file_path = self.currentDir / self.currentFile
+        
+        reply = QMessageBox.question(
+            self,
+            "Confirm Delete",
+            f"Are you sure you want to delete '{self.currentFile}'?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            try:
+                if file_path.is_file():
+                    file_path.unlink()
+                    self.editor.clear()
+                    self.currentFile = None
+                    self.setWindowTitle(f"Coral - {self.currentDir.name}")
+                if file_path.is_dir():
+                    shutil.rmtree(file_path)
+                    self.editor.clear()
+                    self.currentFile = None
+                    self.setWindowTitle(f"Coral - {self.currentDir.name}")
+
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Could not delete file: {e}")
+
+    def onTreeContextMenu(self, position):
+        index = self.tree.indexAt(position)
+        if not index.isValid():
+            return
+
+        file_path = self.model.filePath(index)
+        self.currentFile = Path(file_path).name
+        self.currentDir = Path(file_path).parent
+
+        menu = QMenu()
+        delete_action = QAction("Delete", self)
+        delete_action.triggered.connect(self.deleteFile)
+        menu.addAction(delete_action)
+        menu.exec(self.tree.mapToGlobal(position))
+
     def askUser(self, message, label):
         text, ok = QInputDialog.getText(self, label, message)
 
@@ -233,6 +280,8 @@ class Main(QWidget):
         self.tree.setModel(self.model)
         self.tree.setRootIndex(self.model.index(str(self.currentDir)))
         self.tree.clicked.connect(self.openFile)
+        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self.onTreeContextMenu)
 
         for i in range(1, 4):
             self.tree.hideColumn(i)
@@ -263,6 +312,8 @@ class Main(QWidget):
         Hlayout.addWidget(self.tree, 1)
         Hlayout.addWidget(self.editor, 3)
 
+        qss_path = Path(__file__).parent / "assets" / "crabby.styling.qss"
+        self.setStyleSheet(qss_path.read_text())
         self.showMaximized()
 
 
@@ -271,3 +322,4 @@ if __name__ == "__main__":
     ide = Main(Path.cwd())
     ide.show()
     sys.exit(app.exec())
+    
