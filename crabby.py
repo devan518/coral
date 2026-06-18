@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QCompleter,
     QMenu,
+    QLineEdit
 )
 from PySide6.QtGui import (
     QSyntaxHighlighter,
@@ -26,7 +27,7 @@ from PySide6.QtGui import (
     QAction,
     QTextCursor,
 )
-from PySide6.QtCore import Qt, QStringListModel
+from PySide6.QtCore import Qt, QStringListModel, QEvent
 from subprocess import CREATE_NEW_CONSOLE
 import shutil
 from src.core import CrabHighlighter, CrabCodeHinter
@@ -35,6 +36,7 @@ from src.core import CrabHighlighter, CrabCodeHinter
 class Main(QWidget):
     def __init__(self, startup_path):
         super().__init__()
+        self.setObjectName("mainWindow")
 
         self.keywords = [
             "def", "class", "if", "else", "elif", "while", "for", "in",
@@ -51,6 +53,7 @@ class Main(QWidget):
         self.downloadBinaries()
         self.loadStartupPath()
         self.buildUI()
+        QApplication.instance().installEventFilter(self)
 
     def repairBinaries(self):
         ...
@@ -62,6 +65,205 @@ class Main(QWidget):
         """
         ...
 
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.ContextMenu:
+            widget = QApplication.widgetAt(event.globalPos())
+
+            # Ignore right-clicks outside this window
+            if widget is None:
+                return False
+
+            if widget != self and not self.isAncestorOf(widget):
+                return False
+
+            self.showContextMenuForPosition(event.globalPos())
+            return True
+
+        return super().eventFilter(obj, event)
+    
+    def copyQtObjectName(self, widget):
+        object_name = widget.objectName()
+
+        if not object_name:
+            object_name = f"<no objectName> {widget.metaObject().className()}"
+
+        QApplication.clipboard().setText(object_name)
+
+    def showContextMenuForPosition(self, global_pos):
+        menu = QMenu(self)
+
+        clicked_widget = QApplication.widgetAt(global_pos)
+        object_name_widget = clicked_widget
+
+        # Check if right-click was inside the file tree
+        tree_pos = self.tree.viewport().mapFromGlobal(global_pos)
+        inside_tree = self.tree.viewport().rect().contains(tree_pos)
+
+        if inside_tree:
+            object_name_widget = self.tree
+            index = self.tree.indexAt(tree_pos)
+
+            if index.isValid():
+                path = Path(self.model.filePath(index))
+
+                open_action = QAction("Open", self)
+                open_action.triggered.connect(lambda checked=False, p=path: self.openPath(p))
+
+                rename_action = QAction("Rename", self)
+                rename_action.triggered.connect(lambda checked=False, p=path: self.renamePath(p))
+
+                delete_action = QAction("Delete", self)
+                delete_action.triggered.connect(lambda checked=False, p=path: self.deletePath(p))
+
+                menu.addAction(open_action)
+                menu.addAction(rename_action)
+                menu.addAction(delete_action)
+
+            else:
+                new_file_action = QAction("New File", self)
+                new_file_action.triggered.connect(self.createNewfile)
+
+                new_folder_action = QAction("New Folder", self)
+                new_folder_action.triggered.connect(self.createNewFolder)
+
+                menu.addAction(new_file_action)
+                menu.addAction(new_folder_action)
+
+        # Check if right-click was inside the editor
+        editor_pos = self.editor.viewport().mapFromGlobal(global_pos)
+        inside_editor = self.editor.viewport().rect().contains(editor_pos)
+
+        if inside_editor:
+            object_name_widget = self.editor
+
+            if not menu.isEmpty():
+                menu.addSeparator()
+
+            cut_action = QAction("Cut", self)
+            cut_action.triggered.connect(self.editor.cut)
+
+            copy_action = QAction("Copy", self)
+            copy_action.triggered.connect(self.editor.copy)
+
+            paste_action = QAction("Paste", self)
+            paste_action.triggered.connect(self.editor.paste)
+
+            save_action = QAction("Save", self)
+            save_action.triggered.connect(self.saveFile)
+
+            run_action = QAction("Run Code", self)
+            run_action.triggered.connect(self.runCode)
+
+            menu.addAction(cut_action)
+            menu.addAction(copy_action)
+            menu.addAction(paste_action)
+            menu.addSeparator()
+            menu.addAction(save_action)
+            menu.addAction(run_action)
+
+        # If right-click was somewhere else in the window
+        if menu.isEmpty():
+            new_file_action = QAction("New File", self)
+            new_file_action.triggered.connect(self.createNewfile)
+
+            open_folder_action = QAction("Open Folder", self)
+            open_folder_action.triggered.connect(self.openFolder)
+
+            menu.addAction(new_file_action)
+            menu.addAction(open_folder_action)
+
+        # Always add this debug/helper action at the bottom
+        if object_name_widget is not None:
+            if not menu.isEmpty():
+                menu.addSeparator()
+
+            copy_object_name_action = QAction("Copy Qt Object Name", self)
+            copy_object_name_action.triggered.connect(
+                lambda checked=False, w=object_name_widget: self.copyQtObjectName(w)
+            )
+
+            menu.addAction(copy_object_name_action)
+
+        menu.exec(global_pos)
+
+
+    def openPath(self, path):
+        if path.is_file():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    self.editor.setPlainText(f.read())
+
+                self.currentFile = path.name
+                self.currentDir = path.parent
+                self.setWindowTitle(f"Coral - {path.name}")
+
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Could not open file: {e}")
+
+        elif path.is_dir():
+            self.currentDir = path
+            self.currentFile = None
+
+            self.model.setRootPath(str(path))
+            self.tree.setRootIndex(self.model.index(str(path)))
+            self.editor.clear()
+            self.setWindowTitle(f"Coral - {path.name}")
+
+    def deletePath(self, path):
+        if not path.exists():
+            QMessageBox.warning(self, "Error", "Path does not exist")
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm Delete",
+            f"Are you sure you want to delete '{path.name}'?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            if path.is_file():
+                path.unlink()
+
+            elif path.is_dir():
+                shutil.rmtree(path)
+
+            opened_path = None
+
+            if self.currentFile is not None and self.currentDir is not None:
+                opened_path = self.currentDir / self.currentFile
+
+            if opened_path == path:
+                self.editor.clear()
+                self.currentFile = None
+                self.setWindowTitle(f"Coral - {self.currentDir.name}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not delete: {e}")
+    
+    def renamePath(self, path):
+        new_name = self.askUser("Enter new name:", "Rename", str(path.name))
+
+        if not new_name:
+            return
+
+        new_path = path.parent / new_name
+
+        try:
+            path.rename(new_path)
+
+            if self.currentFile == path.name and self.currentDir == path.parent:
+                self.currentFile = new_path.name
+                self.currentDir = new_path.parent
+                self.setWindowTitle(f"Coral - {new_path.name}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not rename: {e}")
+            
     def runCode(self):
         if self.currentFile is None:
             QMessageBox.warning(self, "Error", "No file selected")
@@ -184,26 +386,18 @@ class Main(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Could not delete file: {e}")
 
-    def onTreeContextMenu(self, position):
-        index = self.tree.indexAt(position)
-        if not index.isValid():
-            return
+    def askUser(self, message, label, placeholder=""):
+        dialog = QInputDialog(self)
+        dialog.setWindowTitle(label)
+        dialog.setLabelText(message)
+        dialog.setInputMode(QInputDialog.TextInput)
+        dialog.setTextValue(placeholder)
 
-        file_path = self.model.filePath(index)
-        self.currentFile = Path(file_path).name
-        self.currentDir = Path(file_path).parent
+        if dialog.exec():
+            text = dialog.textValue().strip()
 
-        menu = QMenu()
-        delete_action = QAction("Delete", self)
-        delete_action.triggered.connect(self.deleteFile)
-        menu.addAction(delete_action)
-        menu.exec(self.tree.mapToGlobal(position))
-
-    def askUser(self, message, label):
-        text, ok = QInputDialog.getText(self, label, message)
-
-        if ok and text:
-            return text.strip()
+            if text:
+                return text
 
         return None
 
@@ -231,6 +425,7 @@ class Main(QWidget):
 
         # === TOPBAR ===
         topbar = QMenuBar()
+        topbar.setObjectName("topMenuBar")
         mainLayout.addWidget(topbar)
 
         # === MENUS ===
@@ -277,17 +472,17 @@ class Main(QWidget):
         self.model.setRootPath(str(self.currentDir))
 
         self.tree = QTreeView()
+        self.tree.setObjectName("fileTree")
         self.tree.setModel(self.model)
         self.tree.setRootIndex(self.model.index(str(self.currentDir)))
         self.tree.clicked.connect(self.openFile)
-        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.tree.customContextMenuRequested.connect(self.onTreeContextMenu)
 
         for i in range(1, 4):
             self.tree.hideColumn(i)
 
         # === EDITOR ===
         self.editor = QPlainTextEdit()
+        self.editor.setObjectName("codeEditor")
         self.editor.setStyleSheet("background:#1e1e1e; color:white;")
         self.editor.setFont(QFont("Consolas", 12))
 
